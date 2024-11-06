@@ -1,0 +1,166 @@
+---
+title: "PEC1_ADO"
+author: "Monica Acacio"
+date: "2024-11-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#Informe PEC1: Análisi de Dades Metabòlomiques
+
+
+##Introducció
+
+Aquesta PEC completa la introducció a les òmiques mitjançant un exercici de repàs i ampliació que ens permet treballar amb algunes de les eines d' aquest curs, en concret, Bioconductor i l' exploració multivariant de dades.L'objectiu d'aquesta PEC és planificar i executar una versió simplificada del procés d'anàlisi de dades òmiques, alhora que practicar amb algunes de les eines i mètodes que s'han treballat.
+
+
+##Metodologia
+
+1. Seleccionar un dataset de metabòlomica del repositori github:https://github.com/nutrimetabolomics/metaboData/
+2. Crear un contenidor de tipus SummarizedExperiment que contingui les dades i metadades(informació sobre el dataset, les files i les columnes).
+3. Exploració del dataset que proporcioni una visió general.
+
+
+##Resultats
+
+```{r}
+
+
+
+#Carreguem la llibreria necessària
+
+library(SummarizedExperiment)
+
+
+#Importarem les dades seleccionades i descarregades del repositori GitHub.
+
+dades <- read.csv("C:/Users/monic/Downloads/human_cachexia.csv",row.names=1)
+data_cachexia<-dades
+data_cachexia<-as.matrix(data_cachexia)
+data_cachexia<-t(data_cachexia)
+#transposem perquè cada mosta sigui una columan i cada característica sigui una fila
+dim(data_cachexia)
+#Tenim 77 mostres (samples, pacients) i 64 característiques o factors analitzats (factor).
+
+#Un cop ho tenim, generarem el SummarizedExperiment
+
+
+#Creem un colData amb les metadadades de les mostres, que és un DataFrame amb les mostres separades per 30 controls (Sans) i 47 pacients amb Cachexia. 
+
+colData <- DataFrame(
+  Treatment = factor(c(rep("Control", 30), rep("Cachexia", 47))),
+  row.names = colnames (data_cachexia)
+)
+
+#Per últim, crearem l'objecte SummarizedExperiment amb la matriu de dades (counts) i les metadades (colData), i tindrem un sol objecte amb el qual podrem treballar
+
+se <- SummarizedExperiment(assays = list(counts = data_cachexia), colData = colData)
+
+#Comprovem el SummarizedExperiment
+
+se
+
+                          
+```
+
+```{r}
+#Podem començar a explorar el DataSet
+#primer instal·lem si calen els paquets
+if (!require("ggplot2")) install.packages("ggplot2")
+if (!require("dplyr")) install.packages("dplyr")
+if (!require("factoextra")) install.packages("factoextra")
+if (!require("readr")) install.packages("readr")
+if (!require("tidyr")) install.packages("tidyr")
+
+library(ggplot2)
+library(dplyr)
+library(factoextra)
+library(readr)
+library(tidyr)
+
+#Primer inspecionarem les dades
+#fem un head(),str() summary()per veure com són els diferents factors analitzats
+head(dades)
+str(dades)
+summary(dades)
+
+#Converirem "muscle loss" en un factor per classificar-ho entre controls i tractament i comparar els diferents metabolits analitzats
+dades$Muscle.loss <- as.factor(dades$Muscle.loss)
+
+
+#Primer fare boxplots per comparar grups cachexia vs control
+
+
+boxplots <- colnames(dades)[c(5,8,11,16)]
+
+for (metabolit in boxplots) {
+  boxplot(dades[[metabolit]] ~ dades$Muscle.loss,
+          main = paste("Boxplot de", metabolit, "segons Muscle loss"),
+          xlab = "Muscle loss",
+          ylab = metabolit,
+          col = c("lightblue", "lightgreen"))}
+
+
+#Histogrames per algunes de les variables
+hist_metabolits <- colnames(dades)[c(5,8,11,16)]  # Seleccionem les mateixes columnes per als histogrames
+
+for (metabolit in hist_metabolits) {
+  hist(dades[[metabolit]],
+       main = paste("Histograma de", metabolit),
+       xlab = metabolit,
+       col = "lightgray",
+       breaks = 30)
+}  
+
+
+#Podem fer un anàlisi de components principals (PCA) 
+
+# Normalitzar les dades per al PCA
+n_data <- dades %>% select_if(is.numeric) %>% na.omit()
+n_data_scaled <- scale(n_data)
+
+# PCA
+pca_result <- prcomp(n_data_scaled, center = TRUE, scale. = TRUE)
+
+# Gràfic del PCA
+plot(pca_result$x[, 1:2],
+     col = as.numeric(dades$Muscle.loss),
+     pch = 19,
+     xlab = "PC1",
+     ylab = "PC2",
+     main = "Anàlisi de Components Principals (PCA)")
+legend("topright", legend = levels(dades$Muscle.loss), col = 1:2, pch = 19)
+
+# Scree plot per veure la variància explicada
+plot(pca_result$sdev^2 / sum(pca_result$sdev^2) * 100,
+     type = "b",
+     xlab = "Components Principals",
+     ylab = "% de variància explicada",
+     main = "Plot")
+
+
+
+
+
+```
+```{r}
+##URL del repositori GitHub
+
+```
+
+https://github.com/Macacio/Acacio-Espinosa-Monica-PEC1/
+
+
+```{r}
+#Per poder fer l'entrega a part de l'enllaç necessitem una sèrie d'arxius
+save(se, file = "cachexia_summarized_experiment.Rda")
+
+#Crearem també script del codi R però sense el text informe, només el codi comentat
+
+
+```
+
